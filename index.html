@@ -22,17 +22,23 @@
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* 毛玻璃質感 */
+        .glass-panel {
+            background: rgba(39, 39, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
         
         /* 選取狀態的樣式 */
         .filter-active { background-color: #10b981; color: white; border-color: #10b981; box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39); }
-        .filter-inactive { background-color: #27272a; color: #a1a1aa; border-color: #3f3f46; }
+        .filter-inactive { background-color: rgba(39, 39, 42, 0.8); color: #a1a1aa; border-color: #3f3f46; }
     </style>
 </head>
-<body class="bg-animate text-zinc-100 min-h-screen flex flex-col items-center justify-between overflow-hidden">
+<body class="bg-animate text-zinc-100 min-h-[100dvh] flex flex-col items-center justify-between overflow-hidden relative">
 
-    <div class="w-full pt-6 px-4 flex flex-col gap-4">
+    <div class="w-full max-w-sm pt-6 px-6 flex flex-col gap-4 z-30">
         <div class="text-center">
             <h1 class="text-xl font-bold tracking-[0.2em] text-emerald-400">DEEP TALK 200</h1>
         </div>
@@ -43,11 +49,31 @@
             <button onclick="toggleDepth(3)" id="btn-depth-3" class="filter-active px-4 py-1.5 rounded-full text-xs font-bold transition-all border">🍷 深 (靈魂)</button>
         </div>
 
-        <div id="filter-bar" class="flex overflow-x-auto space-x-2 no-scrollbar pb-2">
+        <div class="relative w-full">
+            <button onclick="toggleCategoryMenu()" id="cat-trigger-btn" class="w-full py-2.5 rounded-xl text-sm font-bold glass-panel text-emerald-300 flex justify-between items-center px-4 active:scale-95 transition-all shadow-lg">
+                <span class="flex items-center gap-2">📂 選擇類別</span>
+                <span id="cat-status" class="text-xs bg-emerald-500 text-white px-2 py-0.5 rounded-full shadow-md">全部</span>
+            </button>
+
+            <div id="cat-menu" class="hidden absolute top-full left-0 right-0 mt-2 p-4 glass-panel rounded-2xl shadow-2xl flex-col gap-3 max-h-[55vh] overflow-y-auto z-50">
+                
+                <div class="flex justify-between items-center mb-1 pb-3 border-b border-zinc-700/50 sticky top-0 bg-[#1c1c1e]/80 backdrop-blur-md pt-1 z-10 -mt-2 -mx-2 px-2">
+                    <div class="flex gap-2">
+                        <button onclick="selectAllCat()" class="text-xs bg-zinc-700 hover:bg-zinc-600 text-zinc-100 px-3 py-1.5 rounded-lg transition-colors font-bold">全選</button>
+                        <button onclick="deselectAllCat()" class="text-xs bg-zinc-800 border border-zinc-600 text-zinc-300 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-colors font-bold">全清</button>
+                    </div>
+                    <button onclick="toggleCategoryMenu()" class="text-emerald-400 text-sm font-bold bg-emerald-500/20 px-4 py-1.5 rounded-lg active:scale-95 transition-all">完成</button>
+                </div>
+
+                <div id="category-grid" class="grid grid-cols-2 gap-2 mt-1">
+                    </div>
             </div>
+        </div>
     </div>
 
-    <div class="w-full max-w-sm flex flex-col items-center flex-1 justify-center px-6">
+    <div class="w-full max-w-sm flex flex-col items-center flex-1 justify-center px-6 z-10 relative mt-2">
+        <div id="menu-backdrop" onclick="toggleCategoryMenu()" class="hidden fixed inset-0 z-40"></div>
+
         <div id="card-tags" class="mb-4 flex gap-2 opacity-0 transition-all">
             <div id="depth-tag" class="px-3 py-1 border rounded-full text-[10px] font-bold tracking-widest">深度</div>
             <div id="category-tag" class="px-3 py-1 border border-emerald-500/30 rounded-full text-[10px] font-bold tracking-widest text-emerald-400 bg-emerald-500/10">類別</div>
@@ -74,16 +100,16 @@
         </div>
     </div>
 
-    <div class="w-full max-w-sm mb-8 px-6 space-y-4">
-        <button onclick="drawCard()" class="w-full bg-white text-zinc-900 py-4 rounded-2xl font-bold text-lg shadow-xl active:scale-95 transition-all">
+    <div class="w-full max-w-sm mb-10 pb-2 px-6 space-y-4 z-20">
+        <button onclick="drawCard()" class="w-full bg-white text-zinc-900 py-4 rounded-2xl font-bold text-lg shadow-[0_4px_20px_rgba(255,255,255,0.2)] active:scale-95 transition-all">
             抽一張
         </button>
     </div>
 
     <script>
-        // 完整 200 題題庫 (包含深度標籤)
+        // 完整 200 題題庫
         const allQuestions = [
-            // 回憶共鳴 (1-10)
+            // 回憶共鳴
             { depth: 1, cat: "回憶共鳴", text: "如果要把我們大學這幾年的故事拍成電影，你會選哪一幕當封面？" },
             { depth: 1, cat: "回憶共鳴", text: "你覺得我們這群人中，誰在認識前後的「反差」最大？" },
             { depth: 2, cat: "回憶共鳴", text: "認識這麼久，你有哪一次其實對我有點不爽，但當時沒說出口？" },
@@ -94,8 +120,7 @@
             { depth: 1, cat: "回憶共鳴", text: "如果我們這群人要一起去無人島生存，你覺得誰會最先被犧牲？" },
             { depth: 1, cat: "回憶共鳴", text: "有沒有哪一個共同的回憶，是你心情不好時會反覆想起來的？" },
             { depth: 2, cat: "回憶共鳴", text: "你覺得我們認識以來，我做過最讓你意外的一個決定是什麼？" },
-
-            // 自我成長 (11-20)
+            // 自我成長
             { depth: 2, cat: "自我成長", text: "你覺得現在的你，跟 18 歲的你相比，最大的「進化」在哪裡？" },
             { depth: 2, cat: "自我成長", text: "有什麼特質是你以前引以為傲，但現在卻想擺脫掉的？" },
             { depth: 1, cat: "自我成長", text: "你最喜歡現在的自己哪一點？" },
@@ -106,8 +131,7 @@
             { depth: 2, cat: "自我成長", text: "你最近一次感到「我真的長大了」的瞬間是什麼時候？" },
             { depth: 1, cat: "自我成長", text: "如果要用一個標籤形容現在的你，那個標籤會是什麼？" },
             { depth: 2, cat: "自我成長", text: "你覺得自己在處理負面情緒方面，這幾年有進步嗎？" },
-
-            // 未來迷惘 (21-30)
+            // 未來迷惘
             { depth: 2, cat: "未來迷惘", text: "關於畢業後的下一步，你現在最真實的焦慮是什麼？" },
             { depth: 2, cat: "未來迷惘", text: "你最害怕以後的工作或研究環境變成什麼樣子？" },
             { depth: 2, cat: "未來迷惘", text: "你覺得五年後的自己，會在哪裡？在做什麼？" },
@@ -118,8 +142,7 @@
             { depth: 3, cat: "未來迷惘", text: "如果有一天你累到想放棄目標，你希望我對你說什麼話？" },
             { depth: 2, cat: "未來迷惘", text: "你對於「成家立業」這件事，目前的態度是期待還是壓力？" },
             { depth: 3, cat: "未來迷惘", text: "你這輩子最想實現、但目前還不敢開始的一個夢想是什麼？" },
-
-            // 友情羈絆 (31-40)
+            // 友情羈絆
             { depth: 3, cat: "友情羈絆", text: "你覺得在我的生命中，你扮演了什麼樣的角色？" },
             { depth: 2, cat: "友情羈絆", text: "如果我有困難，你覺得我會第一個打電話給你嗎？為什麼？" },
             { depth: 2, cat: "友情羈絆", text: "你覺得我們這群人能一直玩在一起，最核心的特質是什麼？" },
@@ -130,8 +153,7 @@
             { depth: 3, cat: "友情羈絆", text: "你覺得我是一個值得信任的人嗎？那個信任感來自於哪裡？" },
             { depth: 2, cat: "友情羈絆", text: "當你難過時，你是希望有人陪，還是想一個人躲起來的人？" },
             { depth: 3, cat: "友情羈絆", text: "如果我今天突然消失了，你會去哪裡找我？" },
-
-            // 靈魂價值 (41-50)
+            // 靈魂價值
             { depth: 2, cat: "靈魂價值", text: "你覺得「善良」跟「聰明」哪一個比較重要？" },
             { depth: 2, cat: "靈魂價值", text: "你會選擇過一個穩定但無聊的人生，還是精彩但動盪的人生？" },
             { depth: 3, cat: "靈魂價值", text: "你覺得愛人跟被愛，哪一個讓你更有存在感？" },
@@ -142,8 +164,7 @@
             { depth: 3, cat: "靈魂價值", text: "你覺得生命中最讓你感到安定的東西是什麼？" },
             { depth: 3, cat: "靈魂價值", text: "如果可以跟任何一個死掉的人對話一小時，你會選誰？問什麼？" },
             { depth: 3, cat: "靈魂價值", text: "今天聊到現在，有沒有哪一個問題讓你覺得最難回答，但又很值得？" },
-
-            // 感情與親密 (51-60)
+            // 感情與親密
             { depth: 3, cat: "感情與親密", text: "你覺得「愛一個人」跟「喜歡一個人」本質上的差別是什麼？" },
             { depth: 2, cat: "感情與親密", text: "在感情中，你是屬於會「自我犧牲」的人，還是比較看重「對等回饋」？" },
             { depth: 2, cat: "感情與親密", text: "哪一種「行為」會讓你瞬間對一個人失去興趣（冷掉）？" },
@@ -154,8 +175,7 @@
             { depth: 3, cat: "感情與親密", text: "你覺得「誠實」在一段關係中真的是必要的嗎？有沒有什麼是應該隱瞞的？" },
             { depth: 2, cat: "感情與親密", text: "有沒有哪一首歌或一部電影，會讓你直接聯想到某個曾經愛過的人？" },
             { depth: 3, cat: "感情與親密", text: "你覺得在感情中，「被了解」跟「被愛」哪一個比較難得？" },
-
-            // 假如與幻想 (61-70)
+            // 假如與幻想
             { depth: 2, cat: "假如與幻想", text: "如果你可以重啟人生並保留現在的記憶，你會想回到幾歲？" },
             { depth: 1, cat: "假如與幻想", text: "如果我們現在身處喪屍末日，你覺得我們這群人中誰會先背叛大家？" },
             { depth: 2, cat: "假如與幻想", text: "如果你可以跟這世界上任何一個人交換人生一天，你會選誰？" },
@@ -166,8 +186,7 @@
             { depth: 3, cat: "假如與幻想", text: "如果世界末日就在明天，你現在最後悔沒做的一件事是什麼？" },
             { depth: 3, cat: "假如與幻想", text: "如果你可以預知未來，但只能預知關於你「悲劇」的部分，你還想看嗎？" },
             { depth: 2, cat: "假如與幻想", text: "如果要你選出一首能代表你「靈魂」的背景音樂，那會是哪一首？" },
-
-            // 陰影與脆弱 (71-80)
+            // 陰影與脆弱
             { depth: 3, cat: "陰影與脆弱", text: "有沒有哪一個祕密，是因為你太害怕被討厭而從來沒跟人說過的？" },
             { depth: 3, cat: "陰影與脆弱", text: "你最近一次「躲起來哭」是因為什麼事情？" },
             { depth: 3, cat: "陰影與脆弱", text: "你最不希望別人看見你哪一種樣子？（脆弱、憤怒、或是笨拙？）" },
@@ -178,8 +197,7 @@
             { depth: 3, cat: "陰影與脆弱", text: "你有過「想變成別人」的念頭嗎？那個人是誰？" },
             { depth: 3, cat: "陰影與脆弱", text: "你最無法原諒自己曾經做過的哪一件事？" },
             { depth: 3, cat: "陰影與脆弱", text: "如果現在要你對某個「已經沒聯絡的人」說一句話，你會說什麼？" },
-
-            // 生活價值觀 (81-90)
+            // 生活價值觀
             { depth: 2, cat: "生活價值觀", text: "你覺得「追求快樂」是人生的終極目標嗎？如果不是，那是什麼？" },
             { depth: 2, cat: "生活價值觀", text: "你更傾向於「活在當下」還是「為了未來忍耐」？" },
             { depth: 2, cat: "生活價值觀", text: "你覺得社交媒體是讓你更了解世界，還是讓你更焦慮？" },
@@ -190,22 +208,19 @@
             { depth: 3, cat: "生活價值觀", text: "如果你要寫遺書，你最想交待給這個世界的一句話是什麼？" },
             { depth: 2, cat: "生活價值觀", text: "你覺得人生中，哪一個階段是你目前為止最快樂的？" },
             { depth: 2, cat: "生活價值觀", text: "你最嚮往的一種「平靜感」是什麼模樣？" },
-
-            // 大冒險/動作 (91-95)
+            // 大冒險/動作
             { depth: 1, cat: "大冒險/動作", text: "【互動題】盯著對方的眼睛看 30 秒，期間不准說任何話。" },
             { depth: 2, cat: "大冒險/動作", text: "【互動題】說出一件對方讓你不小心「心動」過的瞬間。" },
             { depth: 1, cat: "大冒險/動作", text: "【互動題】給現場的一位朋友一個真誠的讚美，必須是他平時沒聽過的。" },
             { depth: 1, cat: "大冒險/動作", text: "【互動題】展示你手機相簿裡，最近一張讓你覺得有意義的照片。" },
             { depth: 1, cat: "大冒險/動作", text: "【互動題】現場點名一個人，問他一個你一直以來都很好奇的私人問題。" },
-
-            // 畢業特別篇 (96-100)
+            // 畢業特別篇
             { depth: 3, cat: "畢業特別篇", text: "畢業後，你最希望在我們這群人中維持什麼樣的關係？" },
             { depth: 2, cat: "畢業特別篇", text: "想像 10 年後的聚會，你覺得誰最有可能變成完全不一樣的人？" },
             { depth: 2, cat: "畢業特別篇", text: "如果我們要一起做一個時空膠囊，你現在會想放進去什麼？" },
             { depth: 3, cat: "畢業特別篇", text: "大學這幾年，有哪一個「遺憾」是你想在畢業前彌補的？" },
             { depth: 3, cat: "畢業特別篇", text: "如果這是我們最後一次見面，你最想跟我說的一句話是什麼？" },
-
-            // 職場與野心 (101-110)
+            // 職場與野心
             { depth: 2, cat: "職場與野心", text: "你覺得「為了高薪做不喜歡的工作」與「為了夢想領低薪」，哪個更痛苦？" },
             { depth: 2, cat: "職場與野心", text: "如果你的教授或主管是一個完全不講理的人，你會選擇忍耐還是直接對幹？" },
             { depth: 2, cat: "職場與野心", text: "你覺得一個人的「社會地位」重要嗎？你會為了地位放棄部分的自我嗎？" },
@@ -216,8 +231,7 @@
             { depth: 2, cat: "職場與野心", text: "你覺得自己的「專業能力」能讓你生存一輩子嗎？" },
             { depth: 2, cat: "職場與野心", text: "哪一種稱讚會讓你最有成就感？" },
             { depth: 2, cat: "職場與野心", text: "你覺得你是一個適合領導別人的人，還是適合執行的人？" },
-
-            // 科技與思辨 (111-120)
+            // 科技與思辨
             { depth: 3, cat: "科技與思辨", text: "如果 AI 可以完美模擬一個「已故的親友」並跟你對話，你會想嘗試嗎？" },
             { depth: 3, cat: "科技與思辨", text: "如果你的大腦可以上傳到雲端實現永生，但會失去肉體，你願意嗎？" },
             { depth: 2, cat: "科技與思辨", text: "你覺得「演算法」是讓我們看見更廣的世界，還是資訊繭房？" },
@@ -228,8 +242,7 @@
             { depth: 2, cat: "科技與思辨", text: "你覺得「隱私權」在現代社會還真的存在嗎？" },
             { depth: 2, cat: "科技與思辨", text: "哪一項科技產品的發明，你覺得是對人類文明最大的傷害？" },
             { depth: 2, cat: "科技與思辨", text: "如果你的手機螢幕使用時間被公開在大家面前，你會感到羞愧嗎？" },
-
-            // 原生家庭 (121-130)
+            // 原生家庭
             { depth: 2, cat: "原生家庭", text: "你覺得你性格中最好的部分，是遺傳自爸爸還是媽媽？" },
             { depth: 3, cat: "原生家庭", text: "你有沒有哪一個特質是為了「反抗父母」而故意養成的？" },
             { depth: 3, cat: "原生家庭", text: "如果你以後有了孩子，你絕對不希望對他做的「一件事」是什麼？" },
@@ -240,8 +253,7 @@
             { depth: 3, cat: "原生家庭", text: "你覺得父母對你最大的「誤解」是什麼？" },
             { depth: 3, cat: "原生家庭", text: "你最感謝父母的一件事是什麼？即使那是很微小的事。" },
             { depth: 3, cat: "原生家庭", text: "你覺得「家」是一個避風港，還是一個責任壓力來源？" },
-
-            // 極端假設 (131-140)
+            // 極端假設
             { depth: 3, cat: "極端假設", text: "如果你按下去按鈕可以得到一億元，但隨機一人消失，你會按嗎？" },
             { depth: 3, cat: "極端假設", text: "如果得知世界末日就在 24 小時後，你這 24 小時會怎麼分配？" },
             { depth: 3, cat: "極端假設", text: "如果你獲得長生不老，但要看著愛的人一個個離去，你接受嗎？" },
@@ -252,8 +264,7 @@
             { depth: 3, cat: "極端假設", text: "如果你發現人生其實只是外星人的模擬實驗，你會如何？" },
             { depth: 2, cat: "極端假設", text: "假如可以跟未來的自己對話 30 秒，你會問什麼問題？" },
             { depth: 2, cat: "極端假設", text: "如果可以重選科系且不被任何人反對，你會想念什麼？" },
-
-            // 生活美學 (141-150)
+            // 生活美學
             { depth: 1, cat: "生活美學", text: "一個人去吃拉麵與一群人去吃熱炒，哪個比較能讓你充電？" },
             { depth: 1, cat: "生活美學", text: "如果你要佈置理想房間，那裡必須具備的「靈魂物件」是什麼？" },
             { depth: 1, cat: "生活美學", text: "你喜歡大城市的繁華感，還是老街小巷的鑽來鑽去？" },
@@ -264,8 +275,7 @@
             { depth: 2, cat: "生活美學", text: "對你而言，什麼樣的風景會讓你覺得「活著真好」？" },
             { depth: 2, cat: "生活美學", text: "你覺得自己最「迷人」或最有自信的瞬間是什麼樣子的？" },
             { depth: 2, cat: "生活美學", text: "哪一種藝術形式最能觸動你的內心？" },
-
-            // 社群與性格 (151-160)
+            // 社群與性格
             { depth: 2, cat: "社群與性格", text: "你覺得自己在群體中是屬於帶氣氛的，還是默默觀察的人？" },
             { depth: 2, cat: "社群與性格", text: "如果有人在背後說你壞話，你會直接對質還是當作沒看到？" },
             { depth: 2, cat: "社群與性格", text: "你最不能容忍哪種「朋友」的行為？" },
@@ -276,8 +286,7 @@
             { depth: 2, cat: "社群與性格", text: "當你需要幫助時，你是那種很難開口的人嗎？為什麼？" },
             { depth: 2, cat: "社群與性格", text: "你覺得在我們這群人中，你最有安全感的對象是誰？" },
             { depth: 3, cat: "社群與性格", text: "你這輩子聽過對你最中肯、但也最刺耳的評論是什麼？" },
-
-            // 金錢與欲望 (161-170)
+            // 金錢與欲望
             { depth: 2, cat: "金錢與欲望", text: "如果明天突然中了一億樂透，你還會繼續完成學業或工作嗎？" },
             { depth: 2, cat: "金錢與欲望", text: "你覺得「錢可以買到快樂」這句話幾 % 正確？" },
             { depth: 2, cat: "金錢與欲望", text: "哪一種「浪費錢」的行為，是你絕對無法接受的？" },
@@ -288,8 +297,7 @@
             { depth: 2, cat: "金錢與欲望", text: "你會選「低薪但工時超短」還是「高薪但沒生活」？" },
             { depth: 2, cat: "金錢與欲望", text: "你目前為止花過最值得的一筆錢是什麼？" },
             { depth: 2, cat: "金錢與欲望", text: "你覺得「階級翻轉」在台灣現在這個環境還可能嗎？" },
-
-            // 熱情所在 (171-180)
+            // 熱情所在
             { depth: 1, cat: "熱情所在", text: "有什麼東西是你即使不睡覺、不吃飯也要完成的？" },
             { depth: 1, cat: "熱情所在", text: "哪一個遊戲或愛好對你的性格產生了最深刻的影響？" },
             { depth: 2, cat: "熱情所在", text: "如果你的愛好完全不能賺錢，你還會投入多少心力？" },
@@ -300,8 +308,7 @@
             { depth: 2, cat: "熱情所在", text: "如果你可以成為某個領域的世界第一，你希望是哪個領域？" },
             { depth: 2, cat: "熱情所在", text: "你最佩服哪種特質的「職人」或「專家」？" },
             { depth: 1, cat: "熱情所在", text: "你最近一次覺得學習新東西很有趣是什麼時候？" },
-
-            // 遺憾與連結 (181-190)
+            // 遺憾與連結
             { depth: 3, cat: "遺憾與連結", text: "有沒有哪一個道歉是你欠某人，但至今沒說出口的？" },
             { depth: 3, cat: "遺憾與連結", text: "如果可以回到過去改變一個瞬間，你會選擇哪一刻？" },
             { depth: 3, cat: "遺憾與連結", text: "有哪一段友誼的消失最讓你感到可惜？" },
@@ -312,8 +319,7 @@
             { depth: 2, cat: "遺憾與連結", text: "如果要你在一個人的婚禮上致詞，你覺得你最能講出誰的故事？" },
             { depth: 2, cat: "遺憾與連結", text: "這幾年的相處中，我有什麼地方讓你感到很溫暖？" },
             { depth: 2, cat: "遺憾與連結", text: "如果以後我們老了聚在一起，你最希望聊起的回憶是什麼？" },
-
-            // 終極總結 (191-200)
+            // 終極總結
             { depth: 2, cat: "終極總結", text: "今天的對話中，哪一個人的哪一個答案最讓你感到意外？" },
             { depth: 2, cat: "終極總結", text: "如果要用一個字代表你對未來的態度，那個字是什麼？" },
             { depth: 2, cat: "終極總結", text: "你覺得我們這群人，10 年後還會是現在這種狀態嗎？" },
@@ -326,32 +332,56 @@
             { depth: 2, cat: "終極總結", text: "【最後一題】給現場的每個人一個擁抱或擊掌，並說出一句畢業祝福。" }
         ];
 
-        let selectedDepths = new Set([1, 2, 3]); // 預設全選
-        let selectedCategories = new Set(); // 空的代表全選
+        let selectedDepths = new Set([1, 2, 3]); 
         let deck = [];
+        let isMenuOpen = false;
 
         const categories = [...new Set(allQuestions.map(q => q.cat))];
+        // 初始狀態為全選
+        let selectedCategories = new Set(categories);
+
+        function toggleCategoryMenu() {
+            isMenuOpen = !isMenuOpen;
+            const menu = document.getElementById('cat-menu');
+            const backdrop = document.getElementById('menu-backdrop');
+            
+            if (isMenuOpen) {
+                menu.classList.remove('hidden');
+                menu.classList.add('flex');
+                backdrop.classList.remove('hidden');
+            } else {
+                menu.classList.add('hidden');
+                menu.classList.remove('flex');
+                backdrop.classList.add('hidden');
+            }
+        }
 
         function initCategoryFilters() {
-            const filterBar = document.getElementById('filter-bar');
-            
-            // "全部類別" 按鈕
-            const allBtn = document.createElement('button');
-            allBtn.innerText = "全部類別";
-            allBtn.id = "btn-cat-all";
-            allBtn.className = `flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-active`;
-            allBtn.onclick = () => toggleCategory('all');
-            filterBar.appendChild(allBtn);
+            const filterGrid = document.getElementById('category-grid');
+            filterGrid.innerHTML = ''; // 清空重新生成
 
-            // 其他類別按鈕
             categories.forEach(cat => {
                 const btn = document.createElement('button');
                 btn.innerText = cat;
                 btn.id = `btn-cat-${cat}`;
-                btn.className = `flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-inactive`;
+                btn.className = `w-full px-2 py-2 rounded-xl text-xs font-bold transition-all filter-active`;
                 btn.onclick = () => toggleCategory(cat);
-                filterBar.appendChild(btn);
+                filterGrid.appendChild(btn);
             });
+        }
+
+        // 全選按鈕邏輯
+        function selectAllCat() {
+            selectedCategories = new Set(categories);
+            updateFilterUI();
+            buildDeck();
+        }
+
+        // 全清(全不選)按鈕邏輯
+        function deselectAllCat() {
+            selectedCategories.clear();
+            updateFilterUI();
+            buildDeck();
         }
 
         function toggleDepth(depth) {
@@ -359,7 +389,7 @@
                 if (selectedDepths.size > 1) {
                     selectedDepths.delete(depth);
                 } else {
-                    return; // 至少要保留一個深度
+                    return; 
                 }
             } else {
                 selectedDepths.add(depth);
@@ -369,65 +399,54 @@
         }
 
         function toggleCategory(cat) {
-            if (cat === 'all') {
-                selectedCategories.clear();
+            if (selectedCategories.has(cat)) {
+                selectedCategories.delete(cat);
             } else {
-                if (selectedCategories.has(cat)) {
-                    selectedCategories.delete(cat);
-                } else {
-                    selectedCategories.add(cat);
-                }
+                selectedCategories.add(cat);
             }
             updateFilterUI();
             buildDeck();
         }
 
         function updateFilterUI() {
-            // 更新深度按鈕樣式
             [1, 2, 3].forEach(d => {
                 const btn = document.getElementById(`btn-depth-${d}`);
-                if (selectedDepths.has(d)) {
-                    btn.className = "filter-active px-4 py-1.5 rounded-full text-xs font-bold transition-all border";
-                } else {
-                    btn.className = "filter-inactive px-4 py-1.5 rounded-full text-xs font-bold transition-all border";
-                }
+                btn.className = selectedDepths.has(d) 
+                    ? "filter-active px-4 py-1.5 rounded-full text-xs font-bold transition-all border"
+                    : "filter-inactive px-4 py-1.5 rounded-full text-xs font-bold transition-all border border-zinc-600";
             });
 
-            // 更新類別按鈕樣式
-            const allBtn = document.getElementById('btn-cat-all');
-            if (selectedCategories.size === 0) {
-                allBtn.className = "flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-active";
-                categories.forEach(cat => {
-                    document.getElementById(`btn-cat-${cat}`).className = "flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-inactive";
-                });
+            const statusBadge = document.getElementById('cat-status');
+
+            if (selectedCategories.size === categories.length) {
+                statusBadge.innerText = "全部";
+            } else if (selectedCategories.size === 0) {
+                statusBadge.innerText = "無";
             } else {
-                allBtn.className = "flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-inactive";
-                categories.forEach(cat => {
-                    const btn = document.getElementById(`btn-cat-${cat}`);
-                    if (selectedCategories.has(cat)) {
-                        btn.className = "flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-active";
-                    } else {
-                        btn.className = "flex-shrink-0 px-4 py-1.5 rounded-xl text-xs font-bold transition-all filter-inactive";
-                    }
-                });
+                statusBadge.innerText = `已選 ${selectedCategories.size} 項`;
             }
+
+            categories.forEach(cat => {
+                const btn = document.getElementById(`btn-cat-${cat}`);
+                btn.className = selectedCategories.has(cat)
+                    ? "w-full px-2 py-2 rounded-xl text-xs font-bold transition-all filter-active"
+                    : "w-full px-2 py-2 rounded-xl text-xs font-bold transition-all filter-inactive";
+            });
         }
 
         function buildDeck() {
             let pool = allQuestions.filter(q => {
                 const depthMatch = selectedDepths.has(q.depth);
-                const catMatch = selectedCategories.size === 0 || selectedCategories.has(q.cat);
+                const catMatch = selectedCategories.has(q.cat);
                 return depthMatch && catMatch;
             });
             
-            // 洗牌
             for (let i = pool.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [pool[i], pool[j]] = [pool[j], pool[i]];
             }
             deck = pool;
             
-            // UI 重置
             resetCardUI();
             updateCounter();
         }
@@ -465,7 +484,6 @@
 
             const q = deck.pop();
             
-            // 處理深度標籤的外觀
             let depthStr = "";
             let depthColor = "";
             if(q.depth === 1) { depthStr = "🧊 淺"; depthColor = "text-blue-400 border-blue-400/50 bg-blue-400/10"; }
