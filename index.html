@@ -9,7 +9,15 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
         body { font-family: 'Noto+Sans+TC', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
         .perspective { perspective: 1200px; }
-        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        
+        /* 加入 translateZ(0) 強制硬體加速，解決 iOS 破圖與字體疊影問題 */
+        .backface-hidden { 
+            backface-visibility: hidden; 
+            -webkit-backface-visibility: hidden; 
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        }
+        
         .bg-animate {
             background: linear-gradient(-45deg, #09090b, #111827, #064e3b, #022c22);
             background-size: 400% 400%;
@@ -36,17 +44,20 @@
 </head>
 <body class="bg-animate text-zinc-100 min-h-[100dvh] flex flex-col items-center justify-between overflow-hidden relative">
 
+    <!-- Header & Filters -->
     <div class="w-full max-w-sm pt-6 px-6 flex flex-col gap-4 z-30">
         <div class="text-center">
             <h1 class="text-xl font-bold tracking-[0.2em] text-emerald-400">DEEP TALK 200</h1>
         </div>
 
+        <!-- 深度篩選 -->
         <div class="flex justify-center gap-2">
             <button onclick="toggleDepth(1)" id="btn-depth-1" class="filter-active px-4 py-1.5 rounded-full text-xs font-bold transition-all border">🧊 淺 (破冰)</button>
             <button onclick="toggleDepth(2)" id="btn-depth-2" class="filter-active px-4 py-1.5 rounded-full text-xs font-bold transition-all border">☕ 中 (交流)</button>
             <button onclick="toggleDepth(3)" id="btn-depth-3" class="filter-active px-4 py-1.5 rounded-full text-xs font-bold transition-all border">🍷 深 (靈魂)</button>
         </div>
 
+        <!-- 下拉式類別選單 -->
         <div class="relative w-full">
             <button onclick="toggleCategoryMenu()" id="cat-trigger-btn" class="w-full py-2.5 rounded-xl text-sm font-bold glass-panel text-emerald-300 flex justify-between items-center px-4 active:scale-95 transition-all shadow-lg">
                 <span class="flex items-center gap-2">📂 選擇類別</span>
@@ -66,6 +77,7 @@
         </div>
     </div>
 
+    <!-- Main Content (Card Area) -->
     <div class="w-full max-w-sm flex flex-col items-center flex-1 justify-center px-6 z-10 relative">
         <div id="menu-backdrop" onclick="toggleCategoryMenu()" class="hidden fixed inset-0 z-40"></div>
 
@@ -77,6 +89,7 @@
         <div id="card-container" class="perspective w-full aspect-[3/4] cursor-pointer touch-none select-none">
             <div id="card-inner" class="relative w-full h-full shadow-[0_0_40px_rgba(0,0,0,0.5)] rounded-3xl" style="transform: rotateY(0deg); transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);">
                 
+                <!-- 卡牌 A 面 -->
                 <div id="face-a" class="backface-hidden absolute inset-0 bg-emerald-800 border-2 border-emerald-400 rounded-3xl flex flex-col items-center justify-center p-8 text-center overflow-hidden">
                     <div class="absolute top-6 left-6 text-emerald-300/30 text-6xl font-serif">“</div>
                     <p id="q-text-a" class="text-xl md:text-2xl font-bold leading-relaxed text-white z-10"></p>
@@ -88,9 +101,10 @@
                         </div>
                         <p id="front-title" class="text-zinc-100 font-bold text-xl mb-3">準備好了嗎？</p>
                         <p class="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-4 py-2 rounded-full border border-emerald-500/30 animate-pulse">👆 點擊或左右滑動抽牌</p>
-                        </div>
+                    </div>
                 </div>
 
+                <!-- 卡牌 B 面 -->
                 <div id="face-b" class="backface-hidden absolute inset-0 bg-emerald-800 border-2 border-emerald-400 rounded-3xl flex flex-col items-center justify-center p-8 text-center overflow-hidden rotateY-180" style="transform: rotateY(180deg);">
                     <div class="absolute top-6 left-6 text-emerald-300/30 text-6xl font-serif">“</div>
                     <p id="q-text-b" class="text-xl md:text-2xl font-bold leading-relaxed text-white z-10"></p>
@@ -104,6 +118,7 @@
         </div>
     </div>
 
+    <!-- 底部保留安全距離 -->
     <div class="h-6 w-full"></div>
 
     <script>
@@ -389,6 +404,7 @@
         let startX = 0;
         let dragStartRotation = 0;
         let isFirstDraw = true;
+        let isAnimating = false; // 🛑 動畫鎖，防呆防連點破圖
 
         function buildDeck() {
             let pool = allQuestions.filter(q => selectedDepths.has(q.depth) && selectedCategories.has(q.cat));
@@ -408,6 +424,7 @@
             void cardInner.offsetWidth;
             cardInner.style.transition = 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
             isFirstDraw = true;
+            isAnimating = false; // 解鎖
             
             const overlay = document.getElementById('start-overlay');
             overlay.classList.remove('hidden');
@@ -430,6 +447,7 @@
 
         cardContainer.addEventListener('pointerdown', (e) => {
             if (!e.isPrimary) return;
+            if (isAnimating) return; // 🛑 動畫鎖：翻轉中禁止任何互動
             if (deck.length === 0) return;
 
             isDragging = true;
@@ -465,6 +483,8 @@
                     cardInner.style.transform = `rotateY(${currentRotation}deg)`; return;
                 }
 
+                isAnimating = true; // 🛑 鎖定動畫
+
                 let direction = deltaX > 0 ? 1 : (deltaX < 0 ? -1 : 1);
                 currentRotation = dragStartRotation + (direction * 180);
                 
@@ -479,6 +499,12 @@
                     isFirstDraw = false;
                 }
                 if (navigator.vibrate) navigator.vibrate(40);
+
+                // 🛑 等待 0.6s 翻轉動畫完全結束後解鎖
+                setTimeout(() => {
+                    isAnimating = false;
+                }, 600);
+
             } else {
                 currentRotation = dragStartRotation;
             }
